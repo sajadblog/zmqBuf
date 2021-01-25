@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package msgProto;
+
+message NewClientReq {
+    int32 clientId = 1;
+    string msg = 2;
+}
+
+message NewClientRep {
+    int32 clientId = 1;
+    string msg = 2;
+}
+
+message TestMessage {
+string msg = 1;
+int32 count = 2;
+}
