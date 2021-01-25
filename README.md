@@ -12,3 +12,11 @@ request
 reply
 
 protobuf as serialize/deserialize library 
+
+
+
+TODO:
+
+- make subscriber to separated thread for different address 
+
+- timeout to connection healthy checking 

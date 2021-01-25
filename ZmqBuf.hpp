@@ -29,24 +29,26 @@ struct hash_pair {
 	}
 };
 
-class ZmqManager
+class ZmqBuf
 {
 public:
+    ZmqBuf(){};
+    ~ZmqBuf() = default;
 	template<typename REQUEST, typename REPLY>
 	std::future<REPLY> createRequester(std::string address, REQUEST request);
 	template<typename REQUEST, typename REPLY>
 	std::future<bool> createResponder(uint32_t portNumber, std::function<REPLY (REQUEST)> responderCallback, bool unary = false);
 
 	template<typename MESSAGE>
-	void publish(std::string address, std::string topic, const MESSAGE &message);
+    void publish(std::string address, std::string topic, const MESSAGE &message);
 	void subscribe(std::string address, std::string topic, std::function<void (zmq::message_t *)> subscribeCallback)
 	{
-		std::pair<std::string, std::string> pair(std::make_pair(address, topic));
-		if(m_subscriberMap.find(pair) != m_subscriberMap.end())
+        std::pair<std::string, std::string> pair(std::make_pair(address, topic));
+        if(m_subscriberMap.find(pair) != m_subscriberMap.end())
 			return ;
 		m_subscriberMap[pair] = subscribeCallback ;
 		zmq::socket_t *socket = getSubscribeSocket(address);
-		socket->set(zmq::sockopt::subscribe, topic);
+        socket->set(zmq::sockopt::subscribe, topic);
 	}
 
 	template<typename T>
@@ -57,8 +59,6 @@ public:
 	MESSAGE decodeMessage(const zmq::message_t *input);
 
 private:
-	ZmqManager(){};
-	~ZmqManager() = default;
 
 	std::unordered_map<std::string, zmq::socket_t*> m_publisherSocketMap;
 	template <typename T> zmq::socket_t* getPublisherSocket(std::string address);
@@ -74,7 +74,7 @@ private:
 		static zmq::context_t context(1);
 		zmq::socket_t *socket = new zmq::socket_t(context, zmq::socket_type::sub);
 
-		static std::future fet = std::async(std::launch::async, &ZmqManager::inThreadCreateSubscriber, this, address);
+		static std::future fet = std::async(std::launch::async, &ZmqBuf::inThreadCreateSubscriber, this, address);
 
 		m_subscribeSocketMap.insert({address, socket});
 
@@ -107,7 +107,7 @@ private:
 };
 
 template <typename T>
-zmq::socket_t* ZmqManager::getPublisherSocket(std::string address)
+zmq::socket_t* ZmqBuf::getPublisherSocket(std::string address)
 {
 	auto socketIt = m_publisherSocketMap.find(address);
 	if( socketIt != m_publisherSocketMap.end())
@@ -124,7 +124,7 @@ zmq::socket_t* ZmqManager::getPublisherSocket(std::string address)
 }
 
 template<typename T>
-std::vector<T> ZmqManager::convertEnumVector(gp::RepeatedField<int>* input)
+std::vector<T> ZmqBuf::convertEnumVector(gp::RepeatedField<int>* input)
 {
 	std::vector<T> retList;
 	for(int i = 0 ; i < input->size() ; i++)
@@ -133,7 +133,7 @@ std::vector<T> ZmqManager::convertEnumVector(gp::RepeatedField<int>* input)
 }
 
 template<typename MESSAGE>
-MESSAGE ZmqManager::decodeMessage(const zmq::message_t *input)// TODO : must decode from binary style not string serialization
+MESSAGE ZmqBuf::decodeMessage(const zmq::message_t *input)// TODO : must decode from binary style not string serialization
 {
 	gp::io::ZeroCopyInputStream* raw_input = new gp::io::ArrayInputStream(input->data(), input->size());
 	gp::io::CodedInputStream* coded_input = new gp::io::CodedInputStream(raw_input);
@@ -154,7 +154,7 @@ MESSAGE ZmqManager::decodeMessage(const zmq::message_t *input)// TODO : must dec
 	return msg;
 }
 template<typename MESSAGE>
-zmq::message_t ZmqManager::encodeMessage(const MESSAGE &input)// TODO : must encode to binary style not string serialization
+zmq::message_t ZmqBuf::encodeMessage(const MESSAGE &input)// TODO : must encode to binary style not string serialization
 {
 	std::string encoded_message;
 
@@ -178,13 +178,13 @@ zmq::message_t ZmqManager::encodeMessage(const MESSAGE &input)// TODO : must enc
 
 //-----------------------------------------------------Requester----------------------------------------------------------------------
 template<typename REQUEST, typename REPLY>
-std::future<REPLY> ZmqManager::createRequester(std::string address, REQUEST request)
+std::future<REPLY> ZmqBuf::createRequester(std::string address, REQUEST request)
 {
-	return std::async(std::launch::async, &ZmqManager::inThreadCreateRequester<REQUEST, REPLY>, this, address, request);
+	return std::async(std::launch::async, &ZmqBuf::inThreadCreateRequester<REQUEST, REPLY>, this, address, request);
 }
 
 template<typename REQUEST, typename REPLY>
-REPLY ZmqManager::inThreadCreateRequester(std::string address, REQUEST request)
+REPLY ZmqBuf::inThreadCreateRequester(std::string address, REQUEST request)
 {
 	zmq::context_t context(1);
 
@@ -204,13 +204,13 @@ REPLY ZmqManager::inThreadCreateRequester(std::string address, REQUEST request)
 }
 //-----------------------------------------------------Responder----------------------------------------------------------------------
 template<typename REQUEST, typename REPLY>
-std::future<bool> ZmqManager::createResponder(uint32_t portNumber, std::function<REPLY (REQUEST)> responderCallback, bool unary)
+std::future<bool> ZmqBuf::createResponder(uint32_t portNumber, std::function<REPLY (REQUEST)> responderCallback, bool unary)
 {
-	return std::async(std::launch::async, &ZmqManager::inThreadCreateResponder<REQUEST, REPLY>, this, portNumber, responderCallback, unary);
+	return std::async(std::launch::async, &ZmqBuf::inThreadCreateResponder<REQUEST, REPLY>, this, portNumber, responderCallback, unary);
 }
 
 template<typename REQUEST, typename REPLY>
-bool ZmqManager::inThreadCreateResponder(uint32_t portNumber, std::function<REPLY (REQUEST)> responderCallback, bool unary)
+bool ZmqBuf::inThreadCreateResponder(uint32_t portNumber, std::function<REPLY (REQUEST)> responderCallback, bool unary)
 {
 	zmq::context_t context (1);
 	zmq::socket_t socket (context, ZMQ_REP);
@@ -232,7 +232,7 @@ bool ZmqManager::inThreadCreateResponder(uint32_t portNumber, std::function<REPL
 
 //-----------------------------------------------------Publisher----------------------------------------------------------------------
 template<typename MESSAGE>
-void ZmqManager::publish(std::string address, std::string topic, const MESSAGE &message)
+void ZmqBuf::publish(std::string address, std::string topic, const MESSAGE &message)
 {
 	static std::mutex io_mutex;
 	std::lock_guard<std::mutex> lk(io_mutex);
