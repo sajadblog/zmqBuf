@@ -3,13 +3,13 @@ a single-header repository - communicate with ZeroMQ while serializing with poro
 
  ZeroMQ as network library :
 
-publish
+- publish
 
-subscribe
+- subscribe
 
-request
+- request
 
-reply
+- reply
 
 protobuf as serialize/deserialize library 
 
